@@ -151,7 +151,7 @@ function skillSidecar(name: string, description: string): string {
   ].join("\n");
 }
 
-export const codexAdapter: HarnessAdapter = {
+const codexAdapter: HarnessAdapter = {
   target: "codex",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,

@@ -20,7 +20,7 @@ export function printComparison(component: string, ref: string, reports: Compare
   log.info("\n(read the pairs and judge which definition reads better.)");
 }
 
-export function formatDiagnostic(d: Diagnostic): string {
+function formatDiagnostic(d: Diagnostic): string {
   const tag = d.severity === "error" ? "error" : d.severity === "warning" ? "warn" : "info";
   const where = d.where ? `${d.where}: ` : "";
   return `  ${tag.padEnd(5)} ${where}${d.message}`;

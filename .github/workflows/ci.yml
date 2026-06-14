@@ -30,6 +30,9 @@ jobs:
       - name: Lint (Biome)
         run: pnpm lint
 
+      - name: Knip (unused files/exports/deps)
+        run: pnpm knip
+
       - name: Typecheck
         run: pnpm typecheck
 

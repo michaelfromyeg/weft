@@ -74,7 +74,7 @@ function copyFileOrDir(
   return copyDir(ctx, ref, destPrefix, kind);
 }
 
-export const opencodeAdapter: HarnessAdapter = {
+const opencodeAdapter: HarnessAdapter = {
   target: "opencode",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,

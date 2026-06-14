@@ -82,7 +82,7 @@ function copyFileOrDir(
   return copyDir(ctx, ref, destPrefix, kind);
 }
 
-export const claudeAdapter: HarnessAdapter = {
+const claudeAdapter: HarnessAdapter = {
   target: "claude",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,

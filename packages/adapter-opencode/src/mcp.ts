@@ -10,13 +10,13 @@
  * env key is `environment`, NOT `env`.
  */
 
-export interface OpencodeLocalServer {
+interface OpencodeLocalServer {
   type: "local";
   command: string[];
   environment?: Record<string, string>;
   enabled: boolean;
 }
-export interface OpencodeRemoteServer {
+interface OpencodeRemoteServer {
   type: "remote";
   url: string;
   headers?: Record<string, string>;

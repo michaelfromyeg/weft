@@ -93,7 +93,7 @@ function copyFileOrDir(
   return copyDir(ctx, ref, destPrefix, kind);
 }
 
-export const copilotAdapter: HarnessAdapter = {
+const copilotAdapter: HarnessAdapter = {
   target: "copilot",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,

@@ -8,6 +8,7 @@ export type {
   InstallOptions,
   InstallResult,
   LintResult,
+  PluginInstall,
   UninstallOptions,
   UninstallResult,
   UpdateResult,
