@@ -14,6 +14,7 @@ import { type CompileResult, compile, staticPass } from "./compile";
 import { resolveConfig, type SecretsResult } from "./config";
 import { type DependencyRecord, resolveDependencies } from "./deps";
 import { CompileError, type Diagnostic, type Diagnostics } from "./diagnostics";
+import { checkHarnesses, type HarnessCheck } from "./harness";
 import { type FetchedPlugin, loadMarketplaceDir, loadPluginDir } from "./loader";
 import {
   buildLockEntry,
@@ -84,6 +85,11 @@ export interface BuildOptions {
   bare?: boolean;
   /** Compare against on-disk output instead of writing; populates `drift`, writes nothing. */
   check?: boolean;
+  /** Per-target harness version to compare against (e.g. {codex: "0.130"}); skips detection. */
+  harnessVersions?: Record<string, string>;
+  /** Set true to detect installed harness versions via their CLIs (the CLI enables this;
+   * off by default so the library stays hermetic). Declared `harnessVersions` are always checked. */
+  harnessCheck?: boolean;
 }
 
 export interface BuildResult {
@@ -92,6 +98,8 @@ export interface BuildResult {
   written: WrittenArtifact[];
   /** Present only in check mode: how the on-disk output differs from a fresh compile. */
   drift?: DriftReport;
+  /** Harness version-compat findings, one per built target that declares a `harness` (axis 4). */
+  harnessChecks: HarnessCheck[];
 }
 
 /** Drop the planned contents so a plan can be reported as `written` (check mode). */
@@ -106,11 +114,16 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   if (result.diagnostics.hasErrors) {
     throw new CompileError("compile failed", result.diagnostics.errors);
   }
+  const harnessChecks = checkHarnesses(
+    result.targets.map((t) => t.adapter),
+    opts.harnessVersions,
+    opts.harnessCheck === true,
+  );
   const planned = planBuild(result, opts.outDir, opts.bare);
   if (opts.check) {
-    return { result, written: asWritten(planned), drift: diffPlanned(planned) };
+    return { result, written: asWritten(planned), drift: diffPlanned(planned), harnessChecks };
   }
-  return { result, written: writePlanned(planned) };
+  return { result, written: writePlanned(planned), harnessChecks };
 }
 
 export interface BuildMarketplaceOptions {
@@ -122,6 +135,11 @@ export interface BuildMarketplaceOptions {
   bare?: boolean;
   /** Compare against on-disk output instead of writing; populates `drift`, writes nothing. */
   check?: boolean;
+  /** Per-target harness version to compare against (e.g. {codex: "0.130"}); skips detection. */
+  harnessVersions?: Record<string, string>;
+  /** Set true to detect installed harness versions via their CLIs (the CLI enables this;
+   * off by default so the library stays hermetic). Declared `harnessVersions` are always checked. */
+  harnessCheck?: boolean;
 }
 
 export interface BuildMarketplaceResult {
@@ -131,6 +149,8 @@ export interface BuildMarketplaceResult {
   written: WrittenArtifact[];
   /** Present only in check mode: how the on-disk output differs from a fresh compile. */
   drift?: DriftReport;
+  /** Harness version-compat findings, one per built target that declares a `harness` (axis 4). */
+  harnessChecks: HarnessCheck[];
 }
 
 /**
@@ -203,11 +223,22 @@ export async function buildMarketplace(
     planned.push(...planCatalog(adapter, resolved, base));
   }
 
+  const adapters = targets
+    .map((t) => opts.registry.get(t))
+    .filter((a): a is NonNullable<typeof a> => a !== undefined);
+  const harnessChecks = checkHarnesses(adapters, opts.harnessVersions, opts.harnessCheck === true);
+
   const plugins = compiled.map((c) => c.result);
   if (opts.check) {
-    return { marketplace, plugins, written: asWritten(planned), drift: diffPlanned(planned) };
+    return {
+      marketplace,
+      plugins,
+      written: asWritten(planned),
+      drift: diffPlanned(planned),
+      harnessChecks,
+    };
   }
-  return { marketplace, plugins, written: writePlanned(planned) };
+  return { marketplace, plugins, written: writePlanned(planned), harnessChecks };
 }
 
 export interface InstallOptions {

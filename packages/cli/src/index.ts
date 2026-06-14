@@ -9,6 +9,7 @@ import {
   CompileError,
   type DriftReport,
   generateSigningKeys,
+  type HarnessCheck,
   hasMarketplaceManifest,
   importNativePlugin,
   install,
@@ -72,6 +73,28 @@ function reportDrift(drift: DriftReport, out: string): void {
     `\n${out} is out of date with source (${drift.missing.length} missing, ${drift.stale.length} stale); rerun the same build without --check and commit the result`,
   );
   process.exit(1);
+}
+
+/** Parse `codex@0.130,claude@2.1` into {codex:"0.130", claude:"2.1"} for --harness. */
+function parseHarnessVersions(spec: string | undefined): Record<string, string> | undefined {
+  if (!spec) return undefined;
+  const out: Record<string, string> = {};
+  for (const pair of spec.split(",").map((s) => s.trim())) {
+    const at = pair.lastIndexOf("@");
+    if (at > 0) out[pair.slice(0, at)] = pair.slice(at + 1);
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Warn for any target whose installed/declared harness version is outside the verified range. */
+function reportHarness(checks: HarnessCheck[]): void {
+  for (const c of checks) {
+    if (c.satisfied !== false) continue;
+    log.warn(
+      `! ${c.target}: ${c.name} ${c.version} is outside the verified range "${c.range}" ` +
+        `(${c.source}). The emitted format may be stale -- check for a weft update, or re-verify the adapter.`,
+    );
+  }
 }
 
 function fail(err: unknown): never {
@@ -175,6 +198,17 @@ const buildCmd = defineCommand({
       description:
         "Verify --out is already up to date with a fresh compile instead of writing (exit 1 on drift); the CI guard for a committed `--out . --bare` marketplace. Does not detect orphaned files.",
     },
+    harness: {
+      type: "string",
+      description:
+        "Declare installed harness version(s) to check the emitted format against, e.g. `codex@0.130` (comma-separated). Skips auto-detection for those targets.",
+    },
+    "harness-check": {
+      type: "boolean",
+      default: true,
+      description:
+        "Detect the installed harness version per target and warn when the emitted format is outside the adapter's verified range (axis 4). Use --no-harness-check for hermetic builds.",
+    },
   },
   async run({ args }) {
     try {
@@ -185,20 +219,25 @@ const buildCmd = defineCommand({
         process.exit(1);
       }
       const check = Boolean(args.check);
+      const harnessVersions = parseHarnessVersions(args.harness);
+      const harnessCheck = args["harness-check"] !== false;
       // A remote ref (github:/git/owner-repo, optionally //subdir) clones into the
       // cache; a local path is used as-is.
       const { dir } = await resolveSourceDir(args.dir, process.cwd());
 
       // A marketplace.yaml packages many plugins into one catalog.
       if (hasMarketplaceManifest(dir)) {
-        const { marketplace, plugins, written, drift } = await buildMarketplace({
+        const { marketplace, plugins, written, drift, harnessChecks } = await buildMarketplace({
           marketplaceDir: dir,
           outDir: args.out,
           registry,
           targets,
           bare: Boolean(args.bare),
           check,
+          harnessVersions,
+          harnessCheck,
         });
+        reportHarness(harnessChecks);
         if (drift) {
           reportDrift(drift, args.out);
           return;
@@ -216,15 +255,18 @@ const buildCmd = defineCommand({
         return;
       }
 
-      const { result, written, drift } = await build({
+      const { result, written, drift, harnessChecks } = await build({
         pluginDir: dir,
         outDir: args.out,
         registry,
         targets,
         bare: Boolean(args.bare),
         check,
+        harnessVersions,
+        harnessCheck,
       });
       if (result.diagnostics.items.length > 0) printDiagnostics(result.diagnostics.items);
+      reportHarness(harnessChecks);
       if (drift) {
         reportDrift(drift, args.out);
         return;

@@ -86,6 +86,12 @@ export const cursorAdapter: HarnessAdapter = {
   target: "cursor",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,
+  harness: {
+    name: "Cursor",
+    versionCommand: "cursor-agent --version",
+    // Plugin marketplace shipped in the Cursor 2.x line. Bump when re-verified.
+    range: ">=2.0.0 <3.0.0",
+  },
 
   detect(scope: Scope, cwd: string): InstallPaths {
     const root = scope === "user" ? join(homedir(), ".cursor") : join(cwd, ".cursor");

@@ -155,6 +155,13 @@ export const codexAdapter: HarnessAdapter = {
   target: "codex",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,
+  harness: {
+    name: "Codex CLI",
+    versionCommand: "codex --version",
+    // Format confirmed against Codex CLI v0.121 (the marketplace release). Bump when
+    // re-verified against a newer line.
+    range: ">=0.121.0 <0.130.0",
+  },
 
   detect(scope: Scope, cwd: string): InstallPaths {
     const root = scope === "user" ? join(homedir(), ".codex") : join(cwd, ".codex");

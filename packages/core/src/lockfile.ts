@@ -30,7 +30,11 @@ export interface LockEntryInput {
 export function buildLockEntry(input: LockEntryInput): LockEntry {
   const adapters: Lockfile["adapters"] = {};
   for (const t of input.result.targets) {
-    adapters[t.target] = { version: t.adapter.version, targetSchema: t.adapter.targetSchema };
+    adapters[t.target] = {
+      version: t.adapter.version,
+      targetSchema: t.adapter.targetSchema,
+      ...(t.adapter.harness ? { harnessRange: t.adapter.harness.range } : {}),
+    };
   }
   return {
     pluginLock: {

@@ -78,6 +78,13 @@ export const opencodeAdapter: HarnessAdapter = {
   target: "opencode",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,
+  harness: {
+    name: "OpenCode",
+    versionCommand: "opencode --version",
+    // OpenCode has no native marketplace; the agents/skills/mcp layout is stable
+    // across the 0.x line. Bump when re-verified.
+    range: ">=0.1.0 <1.0.0",
+  },
 
   detect(scope: Scope, cwd: string): InstallPaths {
     // User config lives under XDG `~/.config/opencode`; project under `<cwd>/.opencode`.

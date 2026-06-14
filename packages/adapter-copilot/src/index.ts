@@ -97,6 +97,12 @@ export const copilotAdapter: HarnessAdapter = {
   target: "copilot",
   version: "0.1.0",
   targetSchema: TARGET_SCHEMA,
+  harness: {
+    name: "Copilot CLI",
+    versionCommand: "copilot --version",
+    // Bump when the plugin/marketplace format is re-verified against a newer line.
+    range: ">=0.1.0 <1.0.0",
+  },
 
   detect(scope: Scope, cwd: string): InstallPaths {
     // Real Copilot keys its config dir off COPILOT_HOME (default ~/.copilot) and

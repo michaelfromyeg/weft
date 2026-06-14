@@ -36,6 +36,8 @@ export type { DependencyRecord, ResolvedDeps } from "./deps";
 export { resolveDependencies } from "./deps";
 export type { Diagnostic, Severity } from "./diagnostics";
 export { CompileError, Diagnostics } from "./diagnostics";
+export type { HarnessCheck } from "./harness";
+export { checkHarness, checkHarnesses, detectHarnessVersion } from "./harness";
 export { sha256 } from "./hash";
 export type { ImportOutput, ImportPluginOptions } from "./import";
 export { importNativePlugin } from "./import";

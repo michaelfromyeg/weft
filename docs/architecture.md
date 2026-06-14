@@ -57,6 +57,7 @@ interface HarnessAdapter {
   readonly target: Target;
   readonly version: string;       // adapter package version (versioning axis 3)
   readonly targetSchema: string;  // the harness manifest schema version it emits
+  readonly harness?: HarnessCompat;  // upstream harness CLI + supported range (axis 4)
   detect(scope, cwd): InstallPaths;
   transform(component, ctx): CompiledArtifact[];
   emitManifest(plugin, ctx): CompiledArtifact[];
@@ -70,13 +71,17 @@ behind `targetSchema`. When an upstream tool changes its format, that is a new a
 release with a bumped `targetSchema`, and plugins are untouched. See
 [docs/harness-research.md](harness-research.md) for the verified per-harness facts.
 
-## Versioning (three independent axes)
+## Versioning (four independent axes)
 
-All three are pinned in `weft.lock` (spec §5):
+All four are recorded in `weft.lock` (spec §5):
 
 1. Plugin version: semver, git-tag to resolved SHA.
 2. Weft/CLI version: plugins declare `weft_min_version`.
 3. Adapter <-> target-schema version: each adapter declares the harness schema it emits.
+4. Harness CLI version: each adapter declares a `harness` range its emitted format is
+   verified against. `weft build` detects the installed harness version (or takes
+   `--harness <target>@<version>`) and warns when it falls outside that range -- the early
+   signal that an upstream release may have moved the format past what the adapter emits.
 
 Content-addressed artifact hashes make "is there really a new version?" exact: `weft
 update` re-resolves, recompiles, diffs hashes, and re-places only what changed.

@@ -14,6 +14,11 @@ export const myAdapter: HarnessAdapter = {
   target: "myharness",            // must be a known Target (extend @michaelfromyeg/weft-schema's enum)
   version: "0.1.0",               // this adapter package's version (lockfile axis 3)
   targetSchema: "myharness/1.0",  // the harness manifest schema version you emit
+  harness: {                      // optional: upstream harness CLI + supported range (axis 4)
+    name: "My Harness",
+    versionCommand: "myharness --version",
+    range: ">=1.0.0 <2.0.0",      // the harness version range your emitted format is verified against
+  },
 
   detect(scope, cwd) { /* InstallPaths for user|project */ },
   transform(component, ctx) { /* one component -> native artifacts */ },

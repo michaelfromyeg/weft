@@ -24,6 +24,8 @@ export type ArtifactRecord = z.infer<typeof ArtifactRecord>;
 export const AdapterRecord = z.object({
   version: z.string(),
   targetSchema: z.string(),
+  /** The harness version range this adapter's format is verified against (axis 4). */
+  harnessRange: z.string().optional(),
 });
 
 /** One installed plugin's record within a lockfile. */

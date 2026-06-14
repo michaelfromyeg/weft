@@ -19,6 +19,25 @@ export interface PluginCtx {
 }
 
 /**
+ * Declares the upstream harness CLI this adapter targets and the version RANGE
+ * its emitted format is verified against (versioning axis 4, spec §5). Where
+ * `targetSchema` is Weft's INTERNAL tag for the format it emits, this is the
+ * EXTERNAL tool the format must satisfy. `weft build` detects the installed
+ * harness version (or uses one the caller declares) and warns when it falls
+ * outside `range` -- the early signal that an upstream release may have moved
+ * the format past what this adapter emits. Optional: omit when the harness has
+ * no version-printing CLI to compare against.
+ */
+export interface HarnessCompat {
+  /** Human-facing harness name for messages (e.g. "Codex CLI"). */
+  readonly name: string;
+  /** Shell command that prints the installed version (e.g. "codex --version"). */
+  readonly versionCommand?: string;
+  /** Semver range the emitted format is known-good for (e.g. ">=0.121.0 <0.130.0"). */
+  readonly range: string;
+}
+
+/**
  * The seam between Weft's canonical model and one harness's native format
  * (spec §7). Every harness-specific fact lives behind `targetSchema`, so an
  * upstream schema change is a version bump here, not a change to any plugin.
@@ -32,6 +51,8 @@ export interface HarnessAdapter {
   readonly version: string;
   /** The harness manifest schema version this adapter emits against. */
   readonly targetSchema: string;
+  /** The upstream harness CLI + supported version range (versioning axis 4). */
+  readonly harness?: HarnessCompat;
 
   /**
    * Place artifacts directly under the scope's category dirs without the
