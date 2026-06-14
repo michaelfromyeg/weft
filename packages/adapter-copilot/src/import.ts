@@ -212,6 +212,10 @@ function importMarketplace(
     ...(p.category ? { category: String(p.category) } : {}),
     ...(Array.isArray(p.tags) ? { tags: p.tags as string[] } : {}),
   }));
+  // Marketplace-level description nests under `metadata` (top-level is the legacy form).
+  const meta = manifest.metadata as { description?: string } | undefined;
+  const description =
+    meta?.description ?? (manifest.description ? String(manifest.description) : "");
   const marketplace: Marketplace = {
     name: String(manifest.name),
     owner: {
@@ -219,7 +223,7 @@ function importMarketplace(
       namespace,
       ...(owner?.email ? { email: owner.email } : {}),
     },
-    ...(manifest.description ? { description: String(manifest.description) } : {}),
+    ...(description ? { description } : {}),
     plugins,
   };
   return { kind: "marketplace", marketplace };
@@ -236,7 +240,10 @@ const MANIFEST_PATHS = [
 /** Reverse-compile a GitHub Copilot plugin or marketplace dir into the Weft model. */
 export function importCopilot(dir: string, opts?: ImportOptions): ImportResult | null {
   const namespace = opts?.namespace ?? "com.imported";
-  const marketplace = readJson(join(dir, ".copilot-plugin", "marketplace.json"));
+  // `.github/plugin/` is Copilot's marketplace location; `.claude-plugin/` is the fallback.
+  const marketplace =
+    readJson(join(dir, ".github", "plugin", "marketplace.json")) ??
+    readJson(join(dir, ".claude-plugin", "marketplace.json"));
   if (marketplace) return importMarketplace(marketplace, namespace);
 
   for (const segs of MANIFEST_PATHS) {

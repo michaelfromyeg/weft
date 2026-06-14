@@ -21,13 +21,14 @@ import { type McpServerConfig, mcpRunConfig, mcpServerName } from "./mcp";
 
 /**
  * Bump on any change to Copilot's plugin/marketplace manifest shape (spec §5).
+ * /2: catalog corrected to `.github/plugin/marketplace.json` with a `metadata` wrapper.
  *
  * NOTE for the future driver: Copilot has NO structured headless trace. `copilot -p`
  * only emits a markdown transcript via `--share`/`--share-gist`; `--output-format`/
  * `--json` exist only on `copilot mcp` subcommands. A driver must degrade `trace`
  * assertions to `output` assertions (research §Copilot).
  */
-const TARGET_SCHEMA = "copilot-plugin/1";
+const TARGET_SCHEMA = "copilot-plugin/2";
 
 interface CopilotAuthor {
   name: string;
@@ -50,8 +51,8 @@ interface CopilotMarketplacePlugin {
 }
 interface CopilotMarketplace {
   name: string;
+  metadata?: { description?: string; version?: string };
   owner: CopilotAuthor;
-  description?: string;
   plugins: CopilotMarketplacePlugin[];
 }
 
@@ -116,7 +117,9 @@ export const copilotAdapter: HarnessAdapter = {
       // hooks/mcp-config.json but do not confirm a top-level commands/ directory.
       commands: join(root, "commands"),
       hooks: join(root, "hooks"),
-      catalog: root,
+      // The marketplace catalog is a repo artifact at `.github/plugin/` (CONFIRMED
+      // against github/copilot-plugins), independent of the install scope root.
+      catalog: join(cwd, ".github", "plugin"),
     };
   },
 
@@ -190,12 +193,13 @@ export const copilotAdapter: HarnessAdapter = {
       owner: author(marketplace.owner.name, marketplace.owner.email),
       plugins,
     };
-    if (marketplace.description) catalog.description = marketplace.description;
+    // Marketplace-level description/version nest under `metadata` (NOT top-level).
+    if (marketplace.description) catalog.metadata = { description: marketplace.description };
 
-    // TODO(verify): Copilot's marketplace.json shape is NOT documented. This is a
-    // best-effort manifest mirroring Claude's { name, owner, plugins[] }. The exact
-    // field names and file location (.copilot-plugin/ vs root) are unconfirmed.
-    return [artifact(".copilot-plugin/marketplace.json", json(catalog), { kind: "catalog" })];
+    // CONFIRMED (github/copilot-plugins): the catalog lives at
+    // `.github/plugin/marketplace.json` -- `.github/plugin/` is Copilot's search
+    // location, not `.copilot-plugin/`.
+    return [artifact(".github/plugin/marketplace.json", json(catalog), { kind: "catalog" })];
   },
 
   importNative: importCopilot,

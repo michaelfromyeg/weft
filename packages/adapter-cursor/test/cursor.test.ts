@@ -110,7 +110,7 @@ describe("cursor adapter emitManifest", () => {
 });
 
 describe("cursor adapter emitCatalog", () => {
-  it("emits .cursor-plugin/marketplace.json with relative plugin sources", () => {
+  it("emits .cursor-plugin/marketplace.json with bare sources and metadata-nested description", () => {
     const arts = cursorAdapter.emitCatalog({
       name: "sample-plugin",
       owner: plugin.owner,
@@ -123,14 +123,17 @@ describe("cursor adapter emitCatalog", () => {
     expect(arts[0].relPath).toBe(".cursor-plugin/marketplace.json");
     expect(arts[0].kind).toBe("catalog");
     const catalog = JSON.parse(arts[0].contents.toString());
+    // Description nests under metadata, not the top level.
+    expect(catalog.metadata).toEqual({ description: "Sample." });
+    expect(catalog.description).toBeUndefined();
     expect(catalog.owner).toEqual({ name: "Acme", email: "a@acme.example" });
     expect(catalog.plugins).toHaveLength(2);
+    // Sources are bare repo-root-relative paths: a leading "./" is stripped.
     expect(catalog.plugins[0]).toMatchObject({
       name: "sample-plugin",
-      source: "./plugins/sample-plugin",
+      source: "plugins/sample-plugin",
       version: "0.1.0",
     });
-    // A bare source gets normalized to a "./"-relative form.
-    expect(catalog.plugins[1].source).toBe("./plugins/other");
+    expect(catalog.plugins[1].source).toBe("plugins/other");
   });
 });

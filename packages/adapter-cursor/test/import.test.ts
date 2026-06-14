@@ -162,7 +162,7 @@ describe("importCursor marketplace", () => {
       JSON.stringify({
         name: "m",
         owner: { name: "O", email: "o@x" },
-        description: "md",
+        metadata: { description: "md" },
         plugins: [
           { name: "a", source: "./plugins/a", version: "1.0.0", category: "c", tags: ["t"] },
           { name: "b", source: { source: "github", repo: "o/b", ref: "v1" } },
@@ -185,5 +185,7 @@ describe("importCursor marketplace", () => {
       category: "c",
       tags: ["t"],
     });
+    // Description is read from the metadata wrapper.
+    expect(res.marketplace.description).toBe("md");
   });
 });

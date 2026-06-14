@@ -201,6 +201,10 @@ function importMarketplace(
     ...(p.category ? { category: String(p.category) } : {}),
     ...(Array.isArray(p.tags) ? { tags: p.tags as string[] } : {}),
   }));
+  // Marketplace-level description nests under `metadata` (top-level is the legacy form).
+  const meta = manifest.metadata as { description?: string } | undefined;
+  const description =
+    meta?.description ?? (manifest.description ? String(manifest.description) : "");
   const marketplace: Marketplace = {
     name: String(manifest.name),
     owner: {
@@ -208,7 +212,7 @@ function importMarketplace(
       namespace,
       ...(owner?.email ? { email: owner.email } : {}),
     },
-    ...(manifest.description ? { description: String(manifest.description) } : {}),
+    ...(description ? { description } : {}),
     plugins,
   };
   return { kind: "marketplace", marketplace };

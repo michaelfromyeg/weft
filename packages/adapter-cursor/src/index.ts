@@ -20,7 +20,7 @@ import { importCursor } from "./import";
 import { type McpServerConfig, mcpRunConfig, mcpServerName } from "./mcp";
 
 /** Bump on any change to Cursor's plugin/marketplace manifest shape (spec §5). */
-const TARGET_SCHEMA = "cursor-plugin/1";
+const TARGET_SCHEMA = "cursor-plugin/2";
 
 interface CursorAuthor {
   name: string;
@@ -43,8 +43,8 @@ interface CursorMarketplacePlugin {
 }
 interface CursorMarketplace {
   name: string;
+  metadata?: { description?: string; version?: string; pluginRoot?: string };
   owner: CursorAuthor;
-  description?: string;
   plugins: CursorMarketplacePlugin[];
 }
 
@@ -157,7 +157,9 @@ export const cursorAdapter: HarnessAdapter = {
     const plugins: CursorMarketplacePlugin[] = marketplace.entries.map((entry) => {
       const entryPlugin: CursorMarketplacePlugin = {
         name: entry.name,
-        source: entry.source.startsWith("./") ? entry.source : `./${entry.source}`,
+        // Cursor's `source` is a bare repo-root-relative path (e.g. "plugins/x"),
+        // not "./"-prefixed -- matching its own example marketplaces.
+        source: entry.source.replace(/^\.\//, ""),
       };
       if (entry.description) entryPlugin.description = entry.description;
       if (entry.version) entryPlugin.version = entry.version;
@@ -171,7 +173,8 @@ export const cursorAdapter: HarnessAdapter = {
       owner: author(marketplace.owner.name, marketplace.owner.email),
       plugins,
     };
-    if (marketplace.description) catalog.description = marketplace.description;
+    // Marketplace-level description nests under `metadata` (NOT top-level).
+    if (marketplace.description) catalog.metadata = { description: marketplace.description };
 
     return [artifact(".cursor-plugin/marketplace.json", json(catalog), { kind: "catalog" })];
   },

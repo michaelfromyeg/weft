@@ -99,7 +99,10 @@ the driver must degrade honestly (report UNTESTED) rather than guess.
   version, author{name,email?}, homepage, repository, license, keywords, logo`). Component fields
   (string|array) override auto-discovery: `rules, agents, skills, commands, hooks, mcpServers`.
   Auto-discovery: `skills/ rules/ agents/ commands/ hooks/hooks.json mcp.json`. Multi-plugin:
-  `.cursor-plugin/marketplace.json` (`name`, `owner{name,email?}`, `plugins[]` max 500).
+  `.cursor-plugin/marketplace.json` (`name`, `metadata{description?,version?,pluginRoot?}`,
+  `owner{name,email?}`, `plugins[]` max 500). Marketplace description nests under `metadata`
+  (NOT top-level); each entry's `source` is a BARE repo-root-relative path (e.g. `plugins/x`),
+  not `./`-prefixed. CONFIRMED against cursor/plugins + the team-marketplace template.
 - Skills copy-as-is: Cursor loads `.claude/skills/`, `~/.claude/skills/`, `.codex/skills/`,
   `~/.codex/skills/`, `.cursor/skills/`, `~/.cursor/skills/`, `.agents/skills/`, `~/.agents/skills/`.
 - Rules `.mdc` frontmatter has exactly 3 keys -> 4 modes: `alwaysApply:true`=Always;
@@ -121,6 +124,11 @@ the driver must degrade honestly (report UNTESTED) rather than guess.
 - Plugin manifest: `plugin.json` searched at `.plugin/plugin.json`, `plugin.json` (root),
   `.github/plugin/plugin.json`, `.claude-plugin/plugin.json` (Claude compat). Req `name` (kebab,
   ≤64). Component-path fields: `agents, skills, commands, hooks, mcpServers, lspServers`.
+- Marketplace: catalog at `.github/plugin/marketplace.json` (CONFIRMED against
+  github/copilot-plugins). Shape `{name, metadata{description,version?}, owner{name,email?},
+  plugins:[{name, source, description?, version?, author?, keywords?, license?, repository?,
+  category?, tags?}]}`. Marketplace-level description/version nest under `metadata` (NOT
+  top-level). `source` is `string` (e.g. `./plugins/x`) or object `{source:"github", repo, path?}`.
 - MCP: `~/.copilot/mcp-config.json`, key `mcpServers`. Per-server `type`
   (`local|stdio|http|sse`), `command`+`args`+`env` (local/stdio), `url`+`headers` (http/sse),
   `tools` (`"*"` or list). Per-session: `--additional-mcp-config <file>`.

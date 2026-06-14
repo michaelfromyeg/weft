@@ -122,7 +122,7 @@ describe("copilot adapter emitManifest", () => {
 });
 
 describe("copilot adapter emitCatalog", () => {
-  it("emits a best-effort marketplace manifest with relative plugin sources", () => {
+  it("emits .github/plugin/marketplace.json with a metadata wrapper and relative sources", () => {
     const arts = copilotAdapter.emitCatalog({
       name: "sample-plugin",
       owner: plugin.owner,
@@ -132,10 +132,13 @@ describe("copilot adapter emitCatalog", () => {
         { name: "other", source: "plugins/other", description: "Another." },
       ],
     });
-    expect(arts[0].relPath).toBe(".copilot-plugin/marketplace.json");
+    expect(arts[0].relPath).toBe(".github/plugin/marketplace.json");
     expect(arts[0].kind).toBe("catalog");
 
     const catalog = JSON.parse(arts[0].contents.toString());
+    // Marketplace description nests under metadata, not at the top level.
+    expect(catalog.metadata).toEqual({ description: "Sample." });
+    expect(catalog.description).toBeUndefined();
     expect(catalog.owner).toEqual({ name: "Acme", email: "a@acme.example" });
     expect(catalog.plugins).toHaveLength(2);
     expect(catalog.plugins[0]).toMatchObject({
@@ -143,7 +146,7 @@ describe("copilot adapter emitCatalog", () => {
       source: "./plugins/sample-plugin",
       version: "0.1.0",
     });
-    // bare sources get a "./" prefix.
+    // bare sources get a "./" prefix (Copilot accepts both forms).
     expect(catalog.plugins[1].source).toBe("./plugins/other");
   });
 });
