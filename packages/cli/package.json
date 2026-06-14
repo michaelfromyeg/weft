@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-cli",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "The `weft` CLI: a thin shell over @michaelfromyeg/weft-core and the harness adapters.",
   "type": "module",
   "bin": {

@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-index",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Weft metadata index: builder, client, MCP-Registry federation, badges, publish gate.",
   "type": "module",
   "main": "./dist/index.js",

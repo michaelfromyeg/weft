@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-adapter-kit",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Public HarnessAdapter / HarnessDriver interfaces and helpers. The contract a community adapter implements.",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,7 +1,7 @@
 import semver from "semver";
 
 /** The Weft/CLI version (versioning axis 2, spec §5). */
-export const WEFT_VERSION = "1.2.0";
+export const WEFT_VERSION = "1.3.0";
 
 /**
  * Check a plugin's `weft_min_version` against the running Weft. Returns an error
