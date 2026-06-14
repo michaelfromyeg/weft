@@ -5,25 +5,26 @@ _Generated from the CLI definition by `weft docs` -- do not edit by hand._
 ## `weft`
 
 ```
-Author once, compile to every coding-agent harness. (weft v1.4.1)
+Author once, compile to every coding-agent harness. (weft v1.5.0)
 
-USAGE `weft init|validate|build|install|uninstall|update|import|eval|publish|sign|verify|index|docs`
+USAGE `weft init|validate|build|install|uninstall|update|import|marketplace|eval|publish|sign|verify|index|docs`
 
 COMMANDS
 
-       `init`    Scaffold a new plugin (weft.yaml + a sample skill)                               
-   `validate`    Statically validate a plugin (the valid badge)                                   
-      `build`    Compile a plugin (or a marketplace of plugins) to harness manifests              
-    `install`    Compile + place a plugin (or a whole marketplace) into harness scopes            
-  `uninstall`    Remove what install placed into this project (read from its weft.lock)           
-     `update`    Re-resolve refs, recompile, and re-place only artifacts whose hash changed       
-     `import`    Reverse-compile an existing native plugin/marketplace into a Weft plugin         
-       `eval`    Run a component's evals against the real harnesses (reports UNTESTED honestly)   
-    `publish`    Run the deterministic publish gate (static valid + trace/output evals)           
-       `sign`    Sign weft.lock's artifact set (ed25519) -> weft.sig + weft.pub (the signed badge)
-     `verify`    Verify weft.sig against weft.lock and the on-disk artifacts                      
-      `index`    Build a metadata index from plugin dirs (optionally federating the MCP Registry) 
-       `docs`    Print the full CLI reference (a CLI map), generated from the command tree        
+         `init`    Scaffold a new plugin (weft.yaml + a sample skill)                               
+     `validate`    Statically validate a plugin (the valid badge)                                   
+        `build`    Compile a plugin (or a marketplace of plugins) to harness manifests              
+      `install`    Compile + place a plugin (or a whole marketplace) into harness scopes            
+    `uninstall`    Remove what install placed into this project (read from its weft.lock)           
+       `update`    Re-resolve refs, recompile, and re-place only artifacts whose hash changed       
+       `import`    Reverse-compile an existing native plugin/marketplace into a Weft plugin         
+  `marketplace`    Drive each harness's native marketplace CLI (register/install everywhere)        
+         `eval`    Run a component's evals against the real harnesses (reports UNTESTED honestly)   
+      `publish`    Run the deterministic publish gate (static valid + trace/output evals)           
+         `sign`    Sign weft.lock's artifact set (ed25519) -> weft.sig + weft.pub (the signed badge)
+       `verify`    Verify weft.sig against weft.lock and the on-disk artifacts                      
+        `index`    Build a metadata index from plugin dirs (optionally federating the MCP Registry) 
+         `docs`    Print the full CLI reference (a CLI map), generated from the command tree        
 
 Use `weft <command> --help` for more information about a command.
 ```
@@ -33,7 +34,7 @@ Use `weft <command> --help` for more information about a command.
 Compile a plugin (or a marketplace of plugins) to harness manifests
 
 ```
-Compile a plugin (or a marketplace of plugins) to harness manifests (weft build v1.4.1)
+Compile a plugin (or a marketplace of plugins) to harness manifests (weft build v1.5.0)
 
 USAGE `weft build [OPTIONS] [DIR]`
 
@@ -43,11 +44,11 @@ ARGUMENTS
 
 OPTIONS
 
-   `--out=".weft-out"`    Output directory                                                                                                                                                                        
-            `--target`    Comma-separated targets (default: all registered)                                                                                                                                       
-              `--bare`    Write straight to --out without the <target>/ subdir (one --target only); e.g. `--target claude --out . --bare` makes a repo root a Claude marketplace                                  
-             `--check`    Verify --out is already up to date with a fresh compile instead of writing (exit 1 on drift); the CI guard for a committed `--out . --bare` marketplace. Does not detect orphaned files.
-           `--harness`    Declare installed harness version(s) to check the emitted format against, e.g. `codex@0.130` (comma-separated). Skips auto-detection for those targets.                                 
+   `--out=".weft-out"`    Output directory                                                                                                                                                                                                     
+            `--target`    Comma-separated targets (default: all registered)                                                                                                                                                                    
+              `--bare`    Write straight to --out without the <target>/ subdir, so a repo root becomes a native marketplace. Accepts multiple --target (unioned into one tree); errors if two targets write different content to the same path.
+             `--check`    Verify --out is already up to date with a fresh compile instead of writing (exit 1 on drift); the CI guard for a committed `--out . --bare` marketplace. Does not detect orphaned files.                             
+           `--harness`    Declare installed harness version(s) to check the emitted format against, e.g. `codex@0.130` (comma-separated). Skips auto-detection for those targets.                                                              
   `--no-harness-check`    Detect the installed harness version per target and warn when the emitted format is outside the adapter's verified range (axis 4). Use --no-harness-check for hermetic builds.
 ```
 
@@ -56,7 +57,7 @@ OPTIONS
 Print the full CLI reference (a CLI map), generated from the command tree
 
 ```
-Print the full CLI reference (a CLI map), generated from the command tree (weft docs v1.4.1)
+Print the full CLI reference (a CLI map), generated from the command tree (weft docs v1.5.0)
 
 USAGE `weft docs [OPTIONS] `
 
@@ -70,7 +71,7 @@ OPTIONS
 Run a component's evals against the real harnesses (reports UNTESTED honestly)
 
 ```
-Run a component's evals against the real harnesses (reports UNTESTED honestly) (weft eval v1.4.1)
+Run a component's evals against the real harnesses (reports UNTESTED honestly) (weft eval v1.5.0)
 
 USAGE `weft eval [OPTIONS] [DIR]`
 
@@ -90,7 +91,7 @@ OPTIONS
 Reverse-compile an existing native plugin/marketplace into a Weft plugin
 
 ```
-Reverse-compile an existing native plugin/marketplace into a Weft plugin (weft import v1.4.1)
+Reverse-compile an existing native plugin/marketplace into a Weft plugin (weft import v1.5.0)
 
 USAGE `weft import [OPTIONS] [DIR]`
 
@@ -110,7 +111,7 @@ OPTIONS
 Build a metadata index from plugin dirs (optionally federating the MCP Registry)
 
 ```
-Build a metadata index from plugin dirs (optionally federating the MCP Registry) (weft index v1.4.1)
+Build a metadata index from plugin dirs (optionally federating the MCP Registry) (weft index v1.5.0)
 
 USAGE `weft index [OPTIONS] [DIR]`
 
@@ -129,7 +130,7 @@ OPTIONS
 Scaffold a new plugin (weft.yaml + a sample skill)
 
 ```
-Scaffold a new plugin (weft.yaml + a sample skill) (weft init v1.4.1)
+Scaffold a new plugin (weft.yaml + a sample skill) (weft init v1.5.0)
 
 USAGE `weft init [OPTIONS] [DIR]`
 
@@ -148,7 +149,7 @@ OPTIONS
 Compile + place a plugin (or a whole marketplace) into harness scopes
 
 ```
-Compile + place a plugin (or a whole marketplace) into harness scopes (weft install v1.4.1)
+Compile + place a plugin (or a whole marketplace) into harness scopes (weft install v1.5.0)
 
 USAGE `weft install [OPTIONS] [DIR]`
 
@@ -166,12 +167,30 @@ OPTIONS
               `--cwd`    Project root for project-scope placement (default: cwd)
 ```
 
+## `weft marketplace`
+
+Drive each harness's native marketplace CLI (register/install everywhere)
+
+```
+Drive each harness's native marketplace CLI (register/install everywhere) (weft marketplace v1.5.0)
+
+USAGE `weft marketplace add|remove|install`
+
+COMMANDS
+
+      `add`    Register a marketplace with every installed harness            
+   `remove`    Remove a registered marketplace from every harness             
+  `install`    Install a plugin from a registered marketplace on every harness
+
+Use `weft marketplace <command> --help` for more information about a command.
+```
+
 ## `weft publish`
 
 Run the deterministic publish gate (static valid + trace/output evals)
 
 ```
-Run the deterministic publish gate (static valid + trace/output evals) (weft publish v1.4.1)
+Run the deterministic publish gate (static valid + trace/output evals) (weft publish v1.5.0)
 
 USAGE `weft publish [OPTIONS] [DIR]`
 
@@ -189,7 +208,7 @@ OPTIONS
 Sign weft.lock's artifact set (ed25519) -> weft.sig + weft.pub (the signed badge)
 
 ```
-Sign weft.lock's artifact set (ed25519) -> weft.sig + weft.pub (the signed badge) (weft sign v1.4.1)
+Sign weft.lock's artifact set (ed25519) -> weft.sig + weft.pub (the signed badge) (weft sign v1.5.0)
 
 USAGE `weft sign [OPTIONS] [DIR]`
 
@@ -203,7 +222,7 @@ ARGUMENTS
 Remove what install placed into this project (read from its weft.lock)
 
 ```
-Remove what install placed into this project (read from its weft.lock) (weft uninstall v1.4.1)
+Remove what install placed into this project (read from its weft.lock) (weft uninstall v1.5.0)
 
 USAGE `weft uninstall [OPTIONS] [DIR]`
 
@@ -222,7 +241,7 @@ OPTIONS
 Re-resolve refs, recompile, and re-place only artifacts whose hash changed
 
 ```
-Re-resolve refs, recompile, and re-place only artifacts whose hash changed (weft update v1.4.1)
+Re-resolve refs, recompile, and re-place only artifacts whose hash changed (weft update v1.5.0)
 
 USAGE `weft update [OPTIONS] [DIR]`
 
@@ -242,7 +261,7 @@ OPTIONS
 Statically validate a plugin (the valid badge)
 
 ```
-Statically validate a plugin (the valid badge) (weft validate v1.4.1)
+Statically validate a plugin (the valid badge) (weft validate v1.5.0)
 
 USAGE `weft validate [OPTIONS] [DIR]`
 
@@ -256,7 +275,7 @@ ARGUMENTS
 Verify weft.sig against weft.lock and the on-disk artifacts
 
 ```
-Verify weft.sig against weft.lock and the on-disk artifacts (weft verify v1.4.1)
+Verify weft.sig against weft.lock and the on-disk artifacts (weft verify v1.5.0)
 
 USAGE `weft verify [OPTIONS] [DIR]`
 

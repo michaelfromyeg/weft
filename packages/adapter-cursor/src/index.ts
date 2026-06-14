@@ -91,6 +91,10 @@ const cursorAdapter: HarnessAdapter = {
     versionCommand: "cursor-agent --version",
     // Plugin marketplace shipped in the Cursor 2.x line. Bump when re-verified.
     range: ">=2.0.0 <3.0.0",
+    // Cursor has no headless marketplace command; registration is in-app.
+    marketplace: {
+      gui: "Settings -> Plugins -> Team Marketplaces -> Add Marketplace -> Import from Repo",
+    },
   },
 
   detect(scope: Scope, cwd: string): InstallPaths {

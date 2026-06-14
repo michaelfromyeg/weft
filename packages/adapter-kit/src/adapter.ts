@@ -35,6 +35,25 @@ export interface HarnessCompat {
   readonly versionCommand?: string;
   /** Semver range the emitted format is known-good for (e.g. ">=0.121.0 <0.130.0"). */
   readonly range: string;
+  /**
+   * How this harness registers + installs from a marketplace, so `weft marketplace`
+   * can drive every tool from one command. `cli` harnesses are scripted via their
+   * binary; `gui` harnesses (e.g. Cursor) have no headless command, so weft prints
+   * the documented in-app steps. Omit for harnesses with no marketplace (OpenCode).
+   */
+  readonly marketplace?: { cli: HarnessMarketplaceCli } | { gui: string };
+}
+
+/** The native CLI invocations weft shells out to for one harness's marketplace. */
+export interface HarnessMarketplaceCli {
+  /** The CLI binary, e.g. "claude" | "codex" | "copilot". */
+  readonly bin: string;
+  /** argv (after `bin`) to register a marketplace from a repo/path/URL source. */
+  add(source: string): string[];
+  /** argv to remove a registered marketplace by its name. */
+  remove(name: string): string[];
+  /** argv to install a plugin from a registered marketplace. */
+  install(plugin: string, marketplace: string): string[];
 }
 
 /**

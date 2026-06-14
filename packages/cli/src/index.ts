@@ -16,6 +16,10 @@ import {
   installMarketplace,
   lint,
   lockDirForScope,
+  type MarketplaceActionResult,
+  marketplaceAdd,
+  marketplaceInstall,
+  marketplaceRemove,
   readLock,
   resolveSourceDir,
   signLock,
@@ -191,7 +195,7 @@ const buildCmd = defineCommand({
     bare: {
       type: "boolean",
       description:
-        "Write straight to --out without the <target>/ subdir (one --target only); e.g. `--target claude --out . --bare` makes a repo root a Claude marketplace",
+        "Write straight to --out without the <target>/ subdir, so a repo root becomes a native marketplace. Accepts multiple --target (unioned into one tree); errors if two targets write different content to the same path.",
     },
     check: {
       type: "boolean",
@@ -214,10 +218,6 @@ const buildCmd = defineCommand({
     try {
       const registry = buildRegistry();
       const targets = parseTargets(args.target);
-      if (args.bare && targets?.length !== 1) {
-        log.error("--bare requires exactly one --target (e.g. --target claude)");
-        process.exit(1);
-      }
       const check = Boolean(args.check);
       const harnessVersions = parseHarnessVersions(args.harness);
       const harnessCheck = args["harness-check"] !== false;
@@ -770,6 +770,122 @@ const docsCmd = defineCommand({
   },
 });
 
+/** Adapters to drive, filtered by an optional comma-separated --target. */
+function adaptersFor(targetArg: string | undefined) {
+  const registry = buildRegistry();
+  const targets = parseTargets(targetArg) ?? registry.targets;
+  return targets.map((t) => registry.get(t)).filter((a) => a !== undefined);
+}
+
+/** Print a per-harness marketplace action report; exit 1 if any harness command failed. */
+function reportMarketplace(results: MarketplaceActionResult[]): void {
+  log.data({ results });
+  if (results.length === 0) {
+    log.warn("No registered harness exposes a marketplace.");
+    return;
+  }
+  let failed = 0;
+  for (const r of results) {
+    if (r.status === "ok") log.info(`  ok   ${r.name}: ${r.command}`);
+    else if (r.status === "manual") log.info(`  app  ${r.name}: ${r.message}`);
+    else if (r.status === "not-installed") log.info(`  skip ${r.name}: not installed`);
+    else {
+      failed++;
+      log.error(`  FAIL ${r.name}: ${r.message || "command failed"}`);
+    }
+  }
+  if (failed > 0) process.exit(1);
+}
+
+const marketplaceAddCmd = defineCommand({
+  meta: { name: "add", description: "Register a marketplace with every installed harness" },
+  args: {
+    source: {
+      type: "positional",
+      required: true,
+      description: "owner/repo, a URL, or a local path to the marketplace",
+    },
+    target: { type: "string", description: "Comma-separated targets (default: all registered)" },
+  },
+  async run({ args }) {
+    try {
+      log.info(`Registering marketplace ${args.source}:`);
+      reportMarketplace(await marketplaceAdd(adaptersFor(args.target), args.source));
+    } catch (err) {
+      fail(err);
+    }
+  },
+});
+
+const marketplaceRemoveCmd = defineCommand({
+  meta: { name: "remove", description: "Remove a registered marketplace from every harness" },
+  args: {
+    name: { type: "positional", required: true, description: "The marketplace name to remove" },
+    target: { type: "string", description: "Comma-separated targets (default: all registered)" },
+  },
+  async run({ args }) {
+    try {
+      log.info(`Removing marketplace ${args.name}:`);
+      reportMarketplace(await marketplaceRemove(adaptersFor(args.target), args.name));
+    } catch (err) {
+      fail(err);
+    }
+  },
+});
+
+const marketplaceInstallCmd = defineCommand({
+  meta: {
+    name: "install",
+    description: "Install a plugin from a registered marketplace on every harness",
+  },
+  args: {
+    plugin: {
+      type: "positional",
+      required: true,
+      description: "Plugin name, or plugin@marketplace",
+    },
+    marketplace: {
+      type: "string",
+      alias: "m",
+      description: "Marketplace name (if not in plugin@mkt)",
+    },
+    target: { type: "string", description: "Comma-separated targets (default: all registered)" },
+  },
+  async run({ args }) {
+    try {
+      let plugin = args.plugin;
+      let marketplace = args.marketplace;
+      const at = plugin.lastIndexOf("@");
+      if (at > 0) {
+        if (!marketplace) marketplace = plugin.slice(at + 1);
+        plugin = plugin.slice(0, at);
+      }
+      if (!marketplace) {
+        log.error(
+          "specify the marketplace: `weft marketplace install <plugin>@<marketplace>` or --marketplace <name>",
+        );
+        process.exit(1);
+      }
+      log.info(`Installing ${plugin} from ${marketplace}:`);
+      reportMarketplace(await marketplaceInstall(adaptersFor(args.target), plugin, marketplace));
+    } catch (err) {
+      fail(err);
+    }
+  },
+});
+
+const marketplaceCmd = defineCommand({
+  meta: {
+    name: "marketplace",
+    description: "Drive each harness's native marketplace CLI (register/install everywhere)",
+  },
+  subCommands: {
+    add: marketplaceAddCmd,
+    remove: marketplaceRemoveCmd,
+    install: marketplaceInstallCmd,
+  },
+});
+
 const main = defineCommand({
   meta: {
     name: "weft",
@@ -784,6 +900,7 @@ const main = defineCommand({
     uninstall: uninstallCmd,
     update: updateCmd,
     import: importCmd,
+    marketplace: marketplaceCmd,
     eval: evalCmd,
     publish: publishCmd,
     sign: signCmd,

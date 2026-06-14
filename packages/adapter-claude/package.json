@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-adapter-claude",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "Weft adapter for Claude Code: plugin.json + marketplace.json + component placement.",
   "type": "module",
   "main": "./dist/index.js",

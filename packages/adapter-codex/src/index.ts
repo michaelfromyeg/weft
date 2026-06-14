@@ -162,6 +162,15 @@ const codexAdapter: HarnessAdapter = {
     // v0.139 (manual install test: marketplace add + plugin install). Bump the ceiling
     // when re-verified against a newer line.
     range: ">=0.121.0 <0.140.0",
+    marketplace: {
+      cli: {
+        bin: "codex",
+        add: (source) => ["plugin", "marketplace", "add", source],
+        remove: (name) => ["plugin", "marketplace", "remove", name],
+        // Codex uses `plugin add` (not `install`).
+        install: (plugin, marketplace) => ["plugin", "add", `${plugin}@${marketplace}`],
+      },
+    },
   },
 
   detect(scope: Scope, cwd: string): InstallPaths {

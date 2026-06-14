@@ -55,12 +55,16 @@ export {
 } from "./lockfile";
 export type { ManagedPolicy, PolicyContext } from "./managed";
 export { checkManagedPolicy } from "./managed";
+export type { MarketplaceActionResult } from "./marketplace";
+export { marketplaceAdd, marketplaceInstall, marketplaceRemove } from "./marketplace";
 export type { AliasInput, AliasResult } from "./namespace";
 export { resolveAliases } from "./namespace";
 export type { DriftReport, PlannedArtifact, PlannedWrite, WrittenArtifact } from "./place";
 export {
   buildToDir,
+  dedupePlanned,
   diffPlanned,
+  findPlanConflicts,
   installToScope,
   placeCatalog,
   placePluginArtifacts,

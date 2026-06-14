@@ -1,4 +1,4 @@
-export type { HarnessAdapter, HarnessCompat, PluginCtx } from "./adapter";
+export type { HarnessAdapter, HarnessCompat, HarnessMarketplaceCli, PluginCtx } from "./adapter";
 export type { ArtifactKind, CompiledArtifact } from "./artifact";
 export { artifact } from "./artifact";
 export type { CatalogEntry, ResolvedMarketplace } from "./catalog";

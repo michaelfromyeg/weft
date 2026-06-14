@@ -27,7 +27,9 @@ import {
 import { checkManagedPolicy, type ManagedPolicy } from "./managed";
 import {
   type DriftReport,
+  dedupePlanned,
   diffPlanned,
+  findPlanConflicts,
   installToScope,
   type PlannedWrite,
   planBuild,
@@ -107,6 +109,26 @@ function asWritten(planned: PlannedWrite[]): WrittenArtifact[] {
   return planned.map(({ contents: _contents, ...rest }) => rest);
 }
 
+/**
+ * Resolve a (possibly multi-target `--bare`) plan into the set of files to write:
+ * error on any path two targets would write with different content, then dedupe
+ * shared files so the union is written once.
+ */
+function unionPlan(planned: PlannedWrite[]): PlannedWrite[] {
+  const conflicts = findPlanConflicts(planned);
+  if (conflicts.length > 0) {
+    throw new CompileError(
+      "bare build target conflict",
+      conflicts.map((relPath) => ({
+        severity: "error" as const,
+        where: relPath,
+        message: `multiple --target builds write different content to "${relPath}"; build the conflicting targets to separate --out directories instead`,
+      })),
+    );
+  }
+  return dedupePlanned(planned);
+}
+
 /** Compile a plugin and write its marketplace + plugin layout into `outDir` (no install). */
 export async function build(opts: BuildOptions): Promise<BuildResult> {
   const { fb } = await loadResolved(opts.pluginDir);
@@ -119,7 +141,7 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
     opts.harnessVersions,
     opts.harnessCheck === true,
   );
-  const planned = planBuild(result, opts.outDir, opts.bare);
+  const planned = unionPlan(planBuild(result, opts.outDir, opts.bare));
   if (opts.check) {
     return { result, written: asWritten(planned), drift: diffPlanned(planned), harnessChecks };
   }
@@ -228,17 +250,18 @@ export async function buildMarketplace(
     .filter((a): a is NonNullable<typeof a> => a !== undefined);
   const harnessChecks = checkHarnesses(adapters, opts.harnessVersions, opts.harnessCheck === true);
 
+  const unioned = unionPlan(planned);
   const plugins = compiled.map((c) => c.result);
   if (opts.check) {
     return {
       marketplace,
       plugins,
-      written: asWritten(planned),
-      drift: diffPlanned(planned),
+      written: asWritten(unioned),
+      drift: diffPlanned(unioned),
       harnessChecks,
     };
   }
-  return { marketplace, plugins, written: writePlanned(planned), harnessChecks };
+  return { marketplace, plugins, written: writePlanned(unioned), harnessChecks };
 }
 
 export interface InstallOptions {

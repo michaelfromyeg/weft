@@ -83,6 +83,38 @@ export function planBuild(result: CompileResult, outDir: string, bare = false): 
   return planned;
 }
 
+/**
+ * Relative paths that two or more targets would write with DIFFERENT content when
+ * unioned into one `--out` (multi-target `--bare`). Identical content at the same
+ * path is fine (e.g. a shared SKILL.md); only a genuine content clash is a problem.
+ */
+export function findPlanConflicts(planned: PlannedWrite[]): string[] {
+  const hashByAbs = new Map<string, string>();
+  const conflicts = new Set<string>();
+  for (const p of planned) {
+    const prev = hashByAbs.get(p.abs);
+    if (prev === undefined) hashByAbs.set(p.abs, p.hash);
+    else if (prev !== p.hash) conflicts.add(p.relPath);
+  }
+  return [...conflicts].sort();
+}
+
+/**
+ * Drop duplicate planned writes that target the same path (first wins), so a
+ * union build writes each shared file once. Call only after `findPlanConflicts`
+ * has confirmed every same-path pair is byte-identical.
+ */
+export function dedupePlanned(planned: PlannedWrite[]): PlannedWrite[] {
+  const seen = new Set<string>();
+  const unique: PlannedWrite[] = [];
+  for (const p of planned) {
+    if (seen.has(p.abs)) continue;
+    seen.add(p.abs);
+    unique.push(p);
+  }
+  return unique;
+}
+
 /** Write each planned artifact to disk (mkdir as needed); drops `contents` from the result. */
 export function writePlanned(planned: PlannedWrite[]): WrittenArtifact[] {
   return planned.map(({ contents, ...rest }) => {

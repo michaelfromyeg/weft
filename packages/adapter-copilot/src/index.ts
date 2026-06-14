@@ -103,6 +103,14 @@ const copilotAdapter: HarnessAdapter = {
     // Format verified against Copilot CLI v1.0.62 (manual install test: marketplace add
     // + plugin install). Bump when re-verified against a newer line.
     range: ">=1.0.0 <2.0.0",
+    marketplace: {
+      cli: {
+        bin: "copilot",
+        add: (source) => ["plugin", "marketplace", "add", source],
+        remove: (name) => ["plugin", "marketplace", "remove", name],
+        install: (plugin, marketplace) => ["plugin", "install", `${plugin}@${marketplace}`],
+      },
+    },
   },
 
   detect(scope: Scope, cwd: string): InstallPaths {

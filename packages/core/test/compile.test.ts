@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import claudeAdapter from "@michaelfromyeg/weft-adapter-claude";
+import codexAdapter from "@michaelfromyeg/weft-adapter-codex";
 import { execa } from "execa";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -85,6 +86,22 @@ describe("build", () => {
       reject: false,
     });
     expect(res.exitCode).toBe(0);
+  });
+});
+
+describe("multi-target --bare (union)", () => {
+  it("unions multiple targets into one --out: both catalogs at root, shared files deduped", async () => {
+    const out = join(tmp, "union");
+    const reg = new AdapterRegistry().register(claudeAdapter).register(codexAdapter);
+    const { written } = await build({ pluginDir: FIXTURE, outDir: out, registry: reg, bare: true });
+    // Each harness's native catalog lands at its own root path -- no <target>/ subdir.
+    expect(existsSync(join(out, ".claude-plugin/marketplace.json"))).toBe(true);
+    expect(existsSync(join(out, ".agents/plugins/marketplace.json"))).toBe(true);
+    expect(existsSync(join(out, "claude"))).toBe(false);
+    // A SKILL.md shared by both target builds is written exactly once (deduped).
+    const skill = "plugins/sample-plugin/skills/code-review/SKILL.md";
+    expect(written.filter((w) => w.relPath === skill)).toHaveLength(1);
+    expect(existsSync(join(out, skill))).toBe(true);
   });
 });
 

@@ -7,12 +7,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   AdapterRegistry,
   checkMinVersion,
+  dedupePlanned,
+  findPlanConflicts,
   gitInfo,
   hasMarketplaceManifest,
   install,
   installMarketplace,
   lint,
   loadMarketplaceDir,
+  type PlannedWrite,
   parseSource,
   readLock,
   resolvePluginRef,
@@ -264,5 +267,28 @@ describe("validatePlugin via lint", () => {
     const diags = lint(broken).diagnostics;
     expect(diags.hasErrors).toBe(true);
     expect(diags.errors.some((d) => /not valid JSON/.test(d.message))).toBe(true);
+  });
+});
+
+describe("bare union plan (findPlanConflicts / dedupePlanned)", () => {
+  const pw = (abs: string, hash: string): PlannedWrite => ({
+    target: "claude",
+    relPath: abs,
+    abs,
+    hash,
+    contents: Buffer.from(hash),
+  });
+
+  it("flags a path two targets write with different content", () => {
+    expect(findPlanConflicts([pw("/o/x", "h1"), pw("/o/x", "h2")])).toEqual(["/o/x"]);
+  });
+
+  it("treats identical same-path writes as no conflict", () => {
+    expect(findPlanConflicts([pw("/o/x", "h1"), pw("/o/x", "h1"), pw("/o/y", "h2")])).toEqual([]);
+  });
+
+  it("dedupes identical same-path writes, first wins", () => {
+    const out = dedupePlanned([pw("/o/x", "h1"), pw("/o/x", "h1"), pw("/o/y", "h2")]);
+    expect(out.map((p) => p.abs)).toEqual(["/o/x", "/o/y"]);
   });
 });

@@ -91,6 +91,14 @@ const claudeAdapter: HarnessAdapter = {
     versionCommand: "claude --version",
     // Bump when the plugin/marketplace format is re-verified against a newer line.
     range: ">=2.0.0 <3.0.0",
+    marketplace: {
+      cli: {
+        bin: "claude",
+        add: (source) => ["plugin", "marketplace", "add", source],
+        remove: (name) => ["plugin", "marketplace", "remove", name],
+        install: (plugin, marketplace) => ["plugin", "install", `${plugin}@${marketplace}`],
+      },
+    },
   },
 
   detect(scope: Scope, cwd: string): InstallPaths {
