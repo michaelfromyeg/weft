@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-eval",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Weft eval runner + headless HarnessDriver implementations (real harnesses, local-first).",
   "type": "module",
   "main": "./dist/index.js",

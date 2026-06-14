@@ -59,15 +59,24 @@ async function dispatch(
   return results;
 }
 
+/**
+ * Strip weft's `github:` ref scheme to the bare `owner/repo` the harness CLIs
+ * accept. URLs and local paths pass through unchanged.
+ */
+function normalizeSource(source: string): string {
+  return source.startsWith("github:") ? source.slice("github:".length) : source;
+}
+
 /** Register `source` as a marketplace with every installed harness that supports it. */
 export function marketplaceAdd(
   adapters: HarnessAdapter[],
   source: string,
 ): Promise<MarketplaceActionResult[]> {
+  const src = normalizeSource(source);
   return dispatch(
     adapters,
-    (cli) => cli.add(source),
-    (gui) => `register in-app -> ${gui}, pointing at ${source}`,
+    (cli) => cli.add(src),
+    (gui) => `register in-app -> ${gui}, pointing at ${src}`,
   );
 }
 

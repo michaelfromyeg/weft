@@ -55,4 +55,10 @@ describe("marketplaceAdd orchestration", () => {
     expect(cursor?.message).toContain("Settings -> Plugins");
     expect(cursor?.message).toContain("/src");
   });
+
+  it("strips the github: scheme so harnesses receive a bare owner/repo", async () => {
+    const [r] = await marketplaceAdd([stub("cursor", { gui: "Settings" })], "github:o/r");
+    expect(r.message).toContain("o/r");
+    expect(r.message).not.toContain("github:");
+  });
 });
