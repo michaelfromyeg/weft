@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-core",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Weft compile pipeline: resolver, namespacing, placement, lockfile, adapter registry.",
   "type": "module",
   "main": "./dist/index.js",

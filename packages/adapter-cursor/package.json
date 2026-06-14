@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-adapter-cursor",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Weft adapter for Cursor: plugin.json + marketplace.json + component placement.",
   "type": "module",
   "main": "./dist/index.js",
