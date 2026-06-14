@@ -1,7 +1,7 @@
 /**
  * Derives a runnable Codex MCP server config from an MCP-standard `server.json`
- * (the registry's ServerJSON shape: packages[] / remotes[] / a bare command) and
- * renders it as a `config.toml` fragment under `[mcp_servers.<name>]`.
+ * (the registry's ServerJSON shape: packages[] / remotes[] / a bare command).
+ * The result is one entry in a plugin's `.mcp.json` server map.
  *
  * Codex infers the transport from the keys present (`command` => stdio, `url` =>
  * http); there is NO `transport` key (harness-research.md, Codex MCP section).
@@ -71,36 +71,4 @@ export function mcpRunConfig(server: ServerJson): McpServerConfig {
   }
 
   return { command: "echo", args: ["server.json declares no runnable transport"] };
-}
-
-function tomlString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
-function tomlArray(values: string[]): string {
-  return `[${values.map(tomlString).join(", ")}]`;
-}
-
-/**
- * Render the `[mcp_servers.<name>]` tables for a set of servers as a single
- * `config.toml` fragment. `env` becomes a nested `[mcp_servers.<name>.env]`
- * table; transport is implied by `command` vs `url`.
- */
-export function renderMcpServersToml(servers: Record<string, McpServerConfig>): string {
-  const blocks: string[] = [];
-  for (const [name, config] of Object.entries(servers)) {
-    const lines = [`[mcp_servers.${name}]`];
-    if (config.command !== undefined) lines.push(`command = ${tomlString(config.command)}`);
-    if (config.args !== undefined) lines.push(`args = ${tomlArray(config.args)}`);
-    if (config.url !== undefined) lines.push(`url = ${tomlString(config.url)}`);
-    if (config.env && Object.keys(config.env).length > 0) {
-      lines.push("");
-      lines.push(`[mcp_servers.${name}.env]`);
-      for (const [key, val] of Object.entries(config.env)) {
-        lines.push(`${key} = ${tomlString(val)}`);
-      }
-    }
-    blocks.push(lines.join("\n"));
-  }
-  return blocks.length > 0 ? `${blocks.join("\n\n")}\n` : "";
 }

@@ -18,12 +18,79 @@ import {
   type Scope,
 } from "@michaelfromyeg/weft-schema";
 import { importCodex } from "./import";
-import { type McpServerConfig, mcpRunConfig, mcpServerName, renderMcpServersToml } from "./mcp";
+import { type McpServerConfig, mcpRunConfig, mcpServerName } from "./mcp";
 
-/** Bump on any change to Codex's plugin/config/sidecar shape (spec §5). */
-const TARGET_SCHEMA = "codex-plugin/0.117";
+/** Bump on any change to Codex's plugin/marketplace/sidecar shape (spec §5). */
+const TARGET_SCHEMA = "codex-plugin/0.121";
 
 const json = (o: unknown): string => `${JSON.stringify(o, null, 2)}\n`;
+
+interface CodexAuthor {
+  name: string;
+  email?: string;
+}
+function author(name: string, email?: string): CodexAuthor {
+  return email ? { name, email } : { name };
+}
+
+interface CodexPluginManifest {
+  name: string;
+  version?: string;
+  description?: string;
+  author?: CodexAuthor;
+  /** Path to the skills dir, relative to the plugin root. */
+  skills?: string;
+  /** Path to the MCP server map (.mcp.json), relative to the plugin root. */
+  mcpServers?: string;
+  interface?: { displayName: string; shortDescription?: string };
+}
+
+interface CodexLocalSource {
+  source: "local";
+  path: string;
+}
+interface CodexGitSource {
+  source: "git-subdir";
+  url: string;
+  path?: string;
+  ref?: string;
+}
+interface CodexCatalogPlugin {
+  name: string;
+  source: CodexLocalSource | CodexGitSource;
+  policy: { installation: string; authentication: string };
+  category: string;
+}
+interface CodexMarketplace {
+  name: string;
+  interface: { displayName: string };
+  plugins: CodexCatalogPlugin[];
+}
+
+/**
+ * Map a resolved Weft entry source to Codex's discriminated source object. Local
+ * relative paths become `{source:"local"}`; github/git URLs become
+ * `{source:"git-subdir"}`. Codex resolves `path` relative to the repo root.
+ */
+function toCodexSource(source: string): CodexLocalSource | CodexGitSource {
+  const gh = source.match(/^github:([^/#]+)\/([^#]+?)(?:#(.+))?$/);
+  if (gh) {
+    const [, owner, repoAndSub, ref] = gh;
+    const slash = repoAndSub.indexOf("/");
+    const repo = slash >= 0 ? repoAndSub.slice(0, slash) : repoAndSub;
+    const sub = slash >= 0 ? repoAndSub.slice(slash + 1) : "";
+    return {
+      source: "git-subdir",
+      url: `https://github.com/${owner}/${repo}.git`,
+      ...(sub ? { path: `./${sub}` } : {}),
+      ...(ref ? { ref } : {}),
+    };
+  }
+  if (/^https?:\/\//.test(source) || source.endsWith(".git")) {
+    return { source: "git-subdir", url: source };
+  }
+  return { source: "local", path: source.startsWith("./") ? source : `./${source}` };
+}
 
 /** Copy every file under a plugin dir into `destPrefix/`, preserving structure. */
 function copyDir(
@@ -104,9 +171,13 @@ export const codexAdapter: HarnessAdapter = {
       agents: join(root, "agents"),
       // TODO(verify): Codex documents no dedicated commands dir; best-effort under root.
       commands: join(root, "commands"),
-      // TODO(verify): Codex documents no hooks dir; best-effort under root.
+      // TODO(verify): Codex plugins reference hooks via a `hooks/hooks.json` manifest
+      // path; this install-scope dir placement is best-effort and not wired to it.
       hooks: join(root, "hooks"),
-      catalog: root,
+      // Native marketplace catalog lives at `.agents/plugins/marketplace.json`
+      // (shared `.agents` tree), NOT under the `.codex` root.
+      catalog:
+        scope === "user" ? join(homedir(), ".agents", "plugins") : join(cwd, ".agents", "plugins"),
     };
   },
 
@@ -148,13 +219,14 @@ export const codexAdapter: HarnessAdapter = {
         // TODO(verify): no documented Codex commands dir; placed best-effort.
         return copyFileOrDir(ctx, ref, `commands/${leaf}`, "command");
       case "hook":
-        // TODO(verify): no documented Codex hooks dir; placed best-effort.
+        // TODO(verify): Codex declares hooks via a `hooks/hooks.json` manifest; this
+        // per-hook placement is best-effort and not yet wired into that file.
         return copyFileOrDir(ctx, ref, `hooks/${leaf}`, "hook");
       case "mcp":
-        // Verbatim provenance copy; the runnable config goes into config.toml.
+        // Verbatim provenance copy; the runnable config goes into .mcp.json.
         return copyDir(ctx, ref, `mcp/${leaf}`, "mcp");
       case "passthrough":
-        // TODO(verify): no documented Codex hooks dir; placed best-effort, disabled.
+        // TODO(verify): see the hook case; placed best-effort, disabled.
         return [
           artifact(`hooks/${basename(ref)}`, ctx.read(ref), { kind: "hook", executable: true }),
         ];
@@ -177,58 +249,49 @@ export const codexAdapter: HarnessAdapter = {
       }
     }
 
-    const toml = renderMcpServersToml(mcpServers);
-    if (toml) artifacts.push(artifact("config.toml", toml, { kind: "manifest" }));
+    const hasSkills = plugin.components.some((c) => kindOf(c) === "skill");
+    const hasMcp = Object.keys(mcpServers).length > 0;
 
-    // Best-effort plugin descriptor. TODO(verify): the v0.117 plugin.json shape
-    // is not fully documented; fields here are a sensible minimum.
-    const manifest: { name: string; version?: string; description?: string } = {
+    const manifest: CodexPluginManifest = {
       name: plugin.name,
       version: plugin.version,
+      author: author(plugin.owner.name, plugin.owner.email),
     };
     if (plugin.description) manifest.description = plugin.description;
-    artifacts.push(artifact("plugin.json", json(manifest), { kind: "manifest" }));
+    // Auto-discovery covers the default layout; the explicit paths let Codex find
+    // skills/MCP without scanning and make the bundle self-describing.
+    if (hasSkills) manifest.skills = "./skills/";
+    if (hasMcp) manifest.mcpServers = "./.mcp.json";
+    manifest.interface = plugin.description
+      ? { displayName: plugin.name, shortDescription: plugin.description }
+      : { displayName: plugin.name };
+
+    // The manifest MUST live under `.codex-plugin/` (Codex plugin spec, v0.121).
+    artifacts.push(artifact(".codex-plugin/plugin.json", json(manifest), { kind: "manifest" }));
+    // MCP servers go in a sibling `.mcp.json` (a direct name->config map) that the
+    // manifest references -- Codex no longer reads a plugin-local config.toml.
+    if (hasMcp) artifacts.push(artifact(".mcp.json", json(mcpServers), { kind: "manifest" }));
 
     return artifacts;
   },
 
   emitCatalog(marketplace: ResolvedMarketplace): CompiledArtifact[] {
-    // TODO(verify): Codex has no confirmed native marketplace catalog format;
-    // this weft-marketplace.json index is best-effort.
-    const plugins = marketplace.entries.map((entry) => {
-      const e: {
-        name: string;
-        source: string;
-        description?: string;
-        version?: string;
-        category?: string;
-        tags?: string[];
-      } = {
-        name: entry.name,
-        source: entry.source.startsWith("./") ? entry.source : `./${entry.source}`,
-      };
-      if (entry.description) e.description = entry.description;
-      if (entry.version) e.version = entry.version;
-      if (entry.category) e.category = entry.category;
-      if (entry.tags) e.tags = entry.tags;
-      return e;
-    });
+    const plugins: CodexCatalogPlugin[] = marketplace.entries.map((entry) => ({
+      name: entry.name,
+      source: toCodexSource(entry.source),
+      // Codex requires a policy; these defaults match its own example marketplaces.
+      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+      // Codex requires a category; fall back to a valid default when unset.
+      category: entry.category ?? "Productivity",
+    }));
 
-    const catalog: {
-      name: string;
-      owner: { name: string; email?: string };
-      description?: string;
-      plugins: typeof plugins;
-    } = {
+    const catalog: CodexMarketplace = {
       name: marketplace.name,
-      owner: marketplace.owner.email
-        ? { name: marketplace.owner.name, email: marketplace.owner.email }
-        : { name: marketplace.owner.name },
+      interface: { displayName: marketplace.name },
       plugins,
     };
-    if (marketplace.description) catalog.description = marketplace.description;
 
-    return [artifact("weft-marketplace.json", json(catalog), { kind: "catalog" })];
+    return [artifact(".agents/plugins/marketplace.json", json(catalog), { kind: "catalog" })];
   },
 
   importNative: importCodex,

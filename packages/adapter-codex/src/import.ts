@@ -54,18 +54,23 @@ function copyTree(
   return out;
 }
 
-/** A Weft source string from a Codex `weft-marketplace.json` entry `source`. */
+/** A Weft source string from a Codex marketplace entry `source` object. */
 function sourceToString(source: unknown): string {
   if (typeof source === "string") return source;
   const s = source as Record<string, unknown>;
   switch (s?.source) {
-    case "github":
-      return `github:${s.repo}${s.ref ? `#${s.ref}` : ""}`;
-    case "url":
-    case "git-subdir":
-      return String(s.url);
-    case "npm":
-      return `npm:${s.package}${s.version ? `@${s.version}` : ""}`;
+    case "local":
+      return String(s.path ?? "");
+    case "git-subdir": {
+      const url = String(s.url ?? "");
+      const gh = url.match(/github\.com\/([^/]+)\/(.+?)(?:\.git)?$/);
+      if (gh) {
+        const sub = typeof s.path === "string" ? s.path.replace(/^\.\//, "") : "";
+        const ref = typeof s.ref === "string" ? s.ref : "";
+        return `github:${gh[1]}/${gh[2]}${sub ? `/${sub}` : ""}${ref ? `#${ref}` : ""}`;
+      }
+      return url;
+    }
     default:
       return String(source);
   }
@@ -116,72 +121,20 @@ function synthesizeServerJson(namespace: string, name: string, cfg: McpServerCfg
 }
 
 /**
- * Parse the `[mcp_servers.<name>]` tables from a Codex `config.toml` fragment.
- * This is a deliberately small, hand-rolled parser for the subset our adapter
- * emits: `command = ".."`, `args = ["..", ..]`, `url = ".."`, and a nested
- * `[mcp_servers.<name>.env]` table of `KEY = ".."` string pairs.
- * TODO(verify): full Codex config.toml grammar (cwd, bearer_token_env_var,
- * http_headers, enabled_tools, etc.) is not parsed; verbatim mcp/ is preferred.
+ * Read a plugin's `.mcp.json` server map. Accepts both the direct
+ * `{ "<name>": { command, args, ... } }` form Weft emits and the wrapped
+ * `{ "mcp_servers": { ... } }` form Codex also documents.
  */
-function parseMcpServersToml(toml: string): Record<string, McpServerCfg> {
+function readMcpJson(path: string): Record<string, McpServerCfg> {
+  const parsed = readJson(path);
+  if (!parsed) return {};
+  const map =
+    parsed.mcp_servers && typeof parsed.mcp_servers === "object"
+      ? (parsed.mcp_servers as Record<string, unknown>)
+      : parsed;
   const servers: Record<string, McpServerCfg> = {};
-  let current: McpServerCfg | null = null;
-  let envOf: McpServerCfg | null = null;
-
-  const unquote = (v: string): string =>
-    v
-      .trim()
-      .replace(/^"(.*)"$/, "$1")
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, "\\");
-  const parseArray = (v: string): string[] => {
-    const inner = v.trim().replace(/^\[(.*)\]$/s, "$1");
-    const matches = inner.match(/"(?:[^"\\]|\\.)*"/g) ?? [];
-    return matches.map((m) => unquote(m));
-  };
-
-  for (const raw of toml.split("\n")) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const envHeader = line.match(/^\[mcp_servers\.([^.\]]+)\.env\]$/);
-    if (envHeader) {
-      const name = envHeader[1];
-      servers[name] ??= {};
-      const server = servers[name];
-      server.env ??= {};
-      envOf = server;
-      current = null;
-      continue;
-    }
-    const serverHeader = line.match(/^\[mcp_servers\.([^.\]]+)\]$/);
-    if (serverHeader) {
-      const name = serverHeader[1];
-      servers[name] ??= {};
-      current = servers[name];
-      envOf = null;
-      continue;
-    }
-    if (line.startsWith("[")) {
-      current = null;
-      envOf = null;
-      continue;
-    }
-
-    const eq = line.indexOf("=");
-    if (eq < 0) continue;
-    const key = line.slice(0, eq).trim();
-    const value = line.slice(eq + 1).trim();
-
-    if (envOf) {
-      envOf.env ??= {};
-      envOf.env[key] = unquote(value);
-      continue;
-    }
-    if (!current) continue;
-    if (key === "command") current.command = unquote(value);
-    else if (key === "url") current.url = unquote(value);
-    else if (key === "args") current.args = parseArray(value);
+  for (const [name, cfg] of Object.entries(map)) {
+    if (cfg && typeof cfg === "object") servers[name] = cfg as McpServerCfg;
   }
   return servers;
 }
@@ -209,7 +162,7 @@ function importPlugin(
   }
 
   // MCP: prefer the verbatim server.json copies a Weft build leaves under mcp/.
-  // Only when there is no mcp/ dir do we reconstruct from the config.toml tables.
+  // Only when there is no mcp/ dir do we reconstruct from the .mcp.json server map.
   const mcpDir = join(dir, "mcp");
   if (existsSync(mcpDir) && statSync(mcpDir).isDirectory()) {
     for (const leaf of subdirsWith(mcpDir, "server.json")) {
@@ -220,8 +173,8 @@ function importPlugin(
         }),
       );
     }
-  } else if (existsSync(join(dir, "config.toml"))) {
-    const servers = parseMcpServersToml(readFileSync(join(dir, "config.toml"), "utf8"));
+  } else if (existsSync(join(dir, ".mcp.json"))) {
+    const servers = readMcpJson(join(dir, ".mcp.json"));
     for (const [serverName, cfg] of Object.entries(servers)) {
       components.push({ mcp: `mcp/${serverName}` });
       files.push(
@@ -253,21 +206,16 @@ function importMarketplace(
   manifest: Record<string, unknown>,
   namespace: string,
 ): ImportedMarketplace {
-  const owner = manifest.owner as { name?: string; email?: string } | undefined;
+  // The Codex catalog has no owner; it carries `interface.displayName` instead.
+  const iface = manifest.interface as { displayName?: string } | undefined;
+  const ownerName = iface?.displayName ?? String(manifest.name);
   const plugins = ((manifest.plugins as Record<string, unknown>[]) ?? []).map((p) => ({
     plugin: sourceToString(p.source),
-    ...(p.version ? { version: String(p.version) } : {}),
     ...(p.category ? { category: String(p.category) } : {}),
-    ...(Array.isArray(p.tags) ? { tags: p.tags as string[] } : {}),
   }));
   const marketplace: Marketplace = {
     name: String(manifest.name),
-    owner: {
-      name: owner?.name ?? String(manifest.name),
-      namespace,
-      ...(owner?.email ? { email: owner.email } : {}),
-    },
-    ...(manifest.description ? { description: String(manifest.description) } : {}),
+    owner: { name: ownerName, namespace },
     plugins,
   };
   return { kind: "marketplace", marketplace };
@@ -277,11 +225,11 @@ function importMarketplace(
 export function importCodex(dir: string, opts?: ImportOptions): ImportResult | null {
   const namespace = opts?.namespace ?? "com.imported";
 
-  // Codex has no native marketplace; our adapter emits a Weft-only index.
-  const marketplace = readJson(join(dir, "weft-marketplace.json"));
+  // Native Codex marketplace catalog (shared `.agents` tree).
+  const marketplace = readJson(join(dir, ".agents", "plugins", "marketplace.json"));
   if (marketplace) return importMarketplace(marketplace, namespace);
 
-  const manifest = readJson(join(dir, "plugin.json"));
+  const manifest = readJson(join(dir, ".codex-plugin", "plugin.json"));
   const basename = dir.replace(/\/+$/, "").split("/").pop() || "imported-plugin";
   const name = typeof manifest?.name === "string" ? manifest.name : basename;
 

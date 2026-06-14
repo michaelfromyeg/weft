@@ -63,8 +63,9 @@ Packages: the four remaining `@michaelfromyeg/weft-adapter-*` (codex, cursor, co
       changed (content-addressed; an unchanged artifact is never rewritten).
 
 > Many adapter facts beyond Claude are marked `// TODO(verify):` in-code where upstream docs
-> are thin (e.g. Codex `plugin.json` shape, Copilot marketplace shape, Cursor remote MCP
-> header serialization). They are isolated behind each adapter's `targetSchema` per spec §2.
+> are thin (e.g. Copilot marketplace shape, Cursor remote MCP header serialization). They are
+> isolated behind each adapter's `targetSchema` per spec §2. (Codex's plugin + marketplace
+> format is now CONFIRMED as of the v0.121 adapter rewrite -- see harness-research.md.)
 
 Key verified facts for the drivers (see [harness-research.md](harness-research.md)):
 Claude needs `--output-format stream-json --verbose` for a trace (plain `json` is a single
@@ -145,9 +146,9 @@ npm; the repo is `github.com/michaelfromyeg/weft`. Tag-triggered CI publishes ev
       a dir) and the working tree, and print the two transcripts side by side for a human (or
       the pairwise judge) to pick.
 - [x] `weft build --bare`: write a single target straight to `--out` with no `<target>/`
-      subdir, so a repo root becomes a harness-native marketplace
-      (`weft build . --target claude --out . --bare` makes `marketplace add github:owner/repo`
-      work).
+      subdir, so a repo root becomes a harness-native marketplace. `weft build . --target claude
+      --out . --bare` makes `claude plugin marketplace add github:owner/repo` work; `--target codex`
+      writes `.agents/plugins/marketplace.json` for `codex plugin marketplace add owner/repo`.
 
 ## Beyond v1 (planned)
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mcpRunConfig, mcpServerName, renderMcpServersToml } from "../src/mcp";
+import { mcpRunConfig, mcpServerName } from "../src/mcp";
 
 describe("codex mcpRunConfig branches", () => {
   it("pypi -> uvx", () => {
@@ -32,26 +32,5 @@ describe("codex mcpRunConfig branches", () => {
   });
   it("server name fallback", () => {
     expect(mcpServerName({})).toBe("server");
-  });
-});
-
-describe("codex TOML rendering", () => {
-  it("renders [mcp_servers.<name>] with args and a nested env table", () => {
-    const toml = renderMcpServersToml({
-      weather: { command: "npx", args: ["-y", "@a/b"], env: { KEY: "v" } },
-    });
-    expect(toml).toContain("[mcp_servers.weather]");
-    expect(toml).toContain('command = "npx"');
-    expect(toml).toContain('args = ["-y", "@a/b"]');
-    expect(toml).toContain("[mcp_servers.weather.env]");
-    expect(toml).toContain('KEY = "v"');
-  });
-  it("renders a url server and escapes quotes/backslashes", () => {
-    expect(renderMcpServersToml({ s: { url: 'https://x/"q"' } })).toContain(
-      'url = "https://x/\\"q\\""',
-    );
-  });
-  it("returns empty string for no servers", () => {
-    expect(renderMcpServersToml({})).toBe("");
   });
 });

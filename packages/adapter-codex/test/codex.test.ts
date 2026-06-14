@@ -4,7 +4,7 @@ import type { PluginCtx } from "@michaelfromyeg/weft-adapter-kit";
 import type { Component, Plugin } from "@michaelfromyeg/weft-schema";
 import { describe, expect, it } from "vitest";
 import codexAdapter from "../src/index";
-import { mcpRunConfig, mcpServerName, renderMcpServersToml } from "../src/mcp";
+import { mcpRunConfig, mcpServerName } from "../src/mcp";
 
 const SERVER_JSON = JSON.stringify({
   name: "com.acme/weather",
@@ -58,24 +58,6 @@ describe("mcp run config derivation", () => {
 
   it("shortens the reverse-DNS server name", () => {
     expect(mcpServerName({ name: "com.acme/weather" })).toBe("weather");
-  });
-
-  it("renders an [mcp_servers.<name>] table with args array", () => {
-    const toml = renderMcpServersToml({
-      weather: { command: "npx", args: ["-y", "@acme/weather-mcp@1.0.0"] },
-    });
-    expect(toml).toContain("[mcp_servers.weather]");
-    expect(toml).toContain('command = "npx"');
-    expect(toml).toContain('args = ["-y", "@acme/weather-mcp@1.0.0"]');
-    expect(toml).not.toContain("transport");
-  });
-
-  it("renders env as a nested [mcp_servers.<name>.env] table", () => {
-    const toml = renderMcpServersToml({
-      svc: { command: "run", env: { TOKEN: "abc" } },
-    });
-    expect(toml).toContain("[mcp_servers.svc.env]");
-    expect(toml).toContain('TOKEN = "abc"');
   });
 });
 
@@ -132,55 +114,74 @@ describe("codex adapter transform", () => {
 });
 
 describe("codex adapter emitManifest", () => {
-  it("emits a config.toml fragment with [mcp_servers.<name>] and a plugin.json", () => {
+  it("emits .codex-plugin/plugin.json and a .mcp.json server map", () => {
     const arts = codexAdapter.emitManifest(plugin, ctx);
-    const configToml = arts.find((a) => a.relPath === "config.toml");
-    expect(configToml).toBeDefined();
-    const toml = configToml?.contents.toString() ?? "";
-    expect(toml).toContain("[mcp_servers.weather]");
-    expect(toml).toContain('command = "npx"');
-    expect(toml).toContain('args = ["-y", "@acme/weather-mcp@1.0.0"]');
 
-    const pluginJson = arts.find((a) => a.relPath === "plugin.json");
+    const pluginJson = arts.find((a) => a.relPath === ".codex-plugin/plugin.json");
     expect(pluginJson).toBeDefined();
     const manifest = JSON.parse(pluginJson?.contents.toString() ?? "{}");
     expect(manifest).toMatchObject({
       name: "sample-plugin",
       version: "0.1.0",
       description: "Sample.",
+      author: { name: "Acme", email: "a@acme.example" },
+      skills: "./skills/",
+      mcpServers: "./.mcp.json",
+    });
+    expect(manifest.interface).toEqual({
+      displayName: "sample-plugin",
+      shortDescription: "Sample.",
+    });
+
+    const mcpJson = arts.find((a) => a.relPath === ".mcp.json");
+    expect(mcpJson).toBeDefined();
+    const servers = JSON.parse(mcpJson?.contents.toString() ?? "{}");
+    expect(servers.weather).toEqual({
+      command: "npx",
+      args: ["-y", "@acme/weather-mcp@1.0.0"],
     });
   });
 
-  it("omits config.toml when there are no mcp components", () => {
+  it("omits .mcp.json and the mcpServers field when there are no mcp components", () => {
     const noMcp: Plugin = { ...plugin, components: [{ skill: "skills/code-review" }] };
     const arts = codexAdapter.emitManifest(noMcp, ctx);
-    expect(arts.find((a) => a.relPath === "config.toml")).toBeUndefined();
-    expect(arts.find((a) => a.relPath === "plugin.json")).toBeDefined();
+    expect(arts.find((a) => a.relPath === ".mcp.json")).toBeUndefined();
+    const manifest = JSON.parse(
+      arts.find((a) => a.relPath === ".codex-plugin/plugin.json")?.contents.toString() ?? "{}",
+    );
+    expect(manifest.mcpServers).toBeUndefined();
+    expect(manifest.skills).toBe("./skills/");
   });
 });
 
 describe("codex adapter emitCatalog", () => {
-  it("emits a best-effort weft-marketplace.json index", () => {
+  it("emits .agents/plugins/marketplace.json with local + git-subdir sources", () => {
     const arts = codexAdapter.emitCatalog({
-      name: "sample-plugin",
+      name: "sample-market",
       owner: plugin.owner,
       description: "Sample.",
       entries: [
-        { name: "sample-plugin", source: "plugins/sample-plugin", version: "0.1.0" },
-        { name: "other", source: "./plugins/other", description: "Another." },
+        { name: "sample-plugin", source: "plugins/sample-plugin", category: "Productivity" },
+        { name: "remote", source: "github:acme/remote#v1" },
       ],
     });
     expect(arts).toHaveLength(1);
-    expect(arts[0].relPath).toBe("weft-marketplace.json");
+    expect(arts[0].relPath).toBe(".agents/plugins/marketplace.json");
     expect(arts[0].kind).toBe("catalog");
     const catalog = JSON.parse(arts[0].contents.toString());
-    expect(catalog.owner).toEqual({ name: "Acme", email: "a@acme.example" });
-    expect(catalog.plugins).toHaveLength(2);
-    expect(catalog.plugins[0]).toMatchObject({
+    expect(catalog.name).toBe("sample-market");
+    expect(catalog.interface).toEqual({ displayName: "sample-market" });
+    expect(catalog.plugins[0]).toEqual({
       name: "sample-plugin",
-      source: "./plugins/sample-plugin",
-      version: "0.1.0",
+      source: { source: "local", path: "./plugins/sample-plugin" },
+      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+      category: "Productivity",
     });
-    expect(catalog.plugins[1].source).toBe("./plugins/other");
+    expect(catalog.plugins[1]).toEqual({
+      name: "remote",
+      source: { source: "git-subdir", url: "https://github.com/acme/remote.git", ref: "v1" },
+      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+      category: "Productivity",
+    });
   });
 });

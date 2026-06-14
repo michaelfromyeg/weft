@@ -36,7 +36,7 @@ describe("importCodex round-trip", () => {
     if (res?.kind !== "plugin") throw new Error("expected a plugin import");
     expect(res.plugin.owner.namespace).toBe("com.acme");
     expect(res.plugin.name).toBe("sample-plugin");
-    // The verbatim server.json is reused, NOT reconstructed from config.toml.
+    // The verbatim server.json is reused, NOT reconstructed from .mcp.json.
     expect(res.files.find((f) => f.relPath === "mcp/weather/server.json")).toBeDefined();
 
     // Write the imported plugin to disk and lint it; both components survive.
@@ -56,10 +56,10 @@ describe("importCodex round-trip", () => {
 });
 
 describe("importCodex plugin (synthetic)", () => {
-  it("imports skills + toml agents and reconstructs server.json from each config.toml variant", () => {
+  it("imports skills + toml agents and reconstructs server.json from each .mcp.json variant", () => {
     const dir = join(tmp, "plugin");
     write(
-      join(dir, "plugin.json"),
+      join(dir, ".codex-plugin/plugin.json"),
       JSON.stringify({
         name: "p",
         version: "1.2.0",
@@ -71,29 +71,14 @@ describe("importCodex plugin (synthetic)", () => {
     // The per-skill sidecar must be carried verbatim but never treated as an agent.
     write(join(dir, "skills/greet/agents/openai.yaml"), "interface:\n  display_name: greet\n");
     write(join(dir, "agents/helper.toml"), 'name = "helper"\ndescription = "h"\n');
-    // No mcp/ dir => reconstruct from config.toml, covering every server variant.
+    // No mcp/ dir => reconstruct from .mcp.json, covering every server variant.
     write(
-      join(dir, "config.toml"),
-      [
-        "# a leading comment is skipped",
-        "[other.section]",
-        'ignored = "value"',
-        "",
-        "[mcp_servers.npmsrv]",
-        'command = "npx"',
-        'args = ["-y", "@a/b@2.0.0"]',
-        "",
-        "[mcp_servers.remote]",
-        'url = "https://x/mcp"',
-        "",
-        "[mcp_servers.bare]",
-        'command = "node"',
-        'args = ["s.js"]',
-        "",
-        "[mcp_servers.bare.env]",
-        'K = "v"',
-        "",
-      ].join("\n"),
+      join(dir, ".mcp.json"),
+      JSON.stringify({
+        npmsrv: { command: "npx", args: ["-y", "@a/b@2.0.0"] },
+        remote: { url: "https://x/mcp" },
+        bare: { command: "node", args: ["s.js"], env: { K: "v" } },
+      }),
     );
 
     const res = importCodex(dir, { namespace: "com.test" });
@@ -122,15 +107,15 @@ describe("importCodex plugin (synthetic)", () => {
     expect(bare).toMatchObject({ command: "node", args: ["s.js"], env: { K: "v" } });
   });
 
-  it("prefers verbatim mcp/<leaf>/server.json over config.toml when present", () => {
+  it("prefers verbatim mcp/<leaf>/server.json over .mcp.json when present", () => {
     const dir = join(tmp, "verbatim");
     write(join(dir, "skills/x/SKILL.md"), "---\nname: x\ndescription: y\n---\nb");
     write(
       join(dir, "mcp/weather/server.json"),
       JSON.stringify({ name: "com.x/weather", version: "1.0.0", packages: [] }),
     );
-    // A config.toml is also present, but the verbatim copy wins.
-    write(join(dir, "config.toml"), '[mcp_servers.weather]\ncommand = "should-not-run"\n');
+    // A .mcp.json is also present, but the verbatim copy wins.
+    write(join(dir, ".mcp.json"), JSON.stringify({ weather: { command: "should-not-run" } }));
 
     const res = importCodex(dir, { namespace: "com.test" });
     if (res?.kind !== "plugin") throw new Error("expected a plugin import");
@@ -157,37 +142,42 @@ describe("importCodex plugin (synthetic)", () => {
 });
 
 describe("importCodex marketplace", () => {
-  it("maps every weft-marketplace source form to a Weft source string", () => {
+  it("maps Codex catalog source objects to Weft source strings", () => {
     const dir = join(tmp, "mkt");
     write(
-      join(dir, "weft-marketplace.json"),
+      join(dir, ".agents/plugins/marketplace.json"),
       JSON.stringify({
         name: "m",
-        owner: { name: "O", email: "o@x" },
-        description: "md",
+        interface: { displayName: "My Market" },
         plugins: [
-          { name: "a", source: "./plugins/a", version: "1.0.0", category: "c", tags: ["t"] },
-          { name: "b", source: { source: "github", repo: "o/b", ref: "v1" } },
-          { name: "c", source: { source: "url", url: "https://g/c.git" } },
-          { name: "d", source: { source: "npm", package: "pkg", version: "1.0.0" } },
-          { name: "e", source: { source: "mystery", id: "z" } },
+          {
+            name: "a",
+            source: { source: "local", path: "./plugins/a" },
+            policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+            category: "c",
+          },
+          {
+            name: "b",
+            source: {
+              source: "git-subdir",
+              url: "https://github.com/o/b.git",
+              path: "./plugins/b",
+              ref: "v1",
+            },
+          },
+          { name: "c", source: { source: "git-subdir", url: "https://example.com/c.git" } },
         ],
       }),
     );
     const res = importCodex(dir, { namespace: "com.test" });
     if (res?.kind !== "marketplace") throw new Error("expected a marketplace import");
     expect(res.marketplace.owner.namespace).toBe("com.test");
+    expect(res.marketplace.owner.name).toBe("My Market");
     expect(res.marketplace.plugins.map((p) => p.plugin)).toEqual([
       "./plugins/a",
-      "github:o/b#v1",
-      "https://g/c.git",
-      "npm:pkg@1.0.0",
-      "[object Object]",
+      "github:o/b/plugins/b#v1",
+      "https://example.com/c.git",
     ]);
-    expect(res.marketplace.plugins[0]).toMatchObject({
-      version: "1.0.0",
-      category: "c",
-      tags: ["t"],
-    });
+    expect(res.marketplace.plugins[0]).toMatchObject({ category: "c" });
   });
 });

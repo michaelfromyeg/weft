@@ -72,7 +72,22 @@ the driver must degrade honestly (report UNTESTED) rather than guess.
   `[mcp_servers.<name>]`. stdio: `command` (req), `args`, `[mcp_servers.<name>.env]`, `cwd`.
   http: `url` (req), `bearer_token_env_var`, `http_headers`. There is no `transport` key; it is inferred
   from `command` vs `url`. Per-server: `enabled_tools`, `disabled_tools`, `tool_timeout_sec`.
-- Plugin bundle `plugin.json` exists (v0.117.0, Mar 2026) bundling skills + MCP + connectors.
+- Plugins (v0.121, Apr 2026): manifest at `<plugin>/.codex-plugin/plugin.json` (`name`, opt
+  `version, description, author{name,email,url}, homepage, repository, license, keywords,
+  skills:"./skills/", mcpServers:"./.mcp.json", apps, hooks, interface{displayName,
+  shortDescription, longDescription, developerName, category, capabilities, defaultPrompt, ...}`).
+  Plugin-scoped MCP lives in a sibling `.mcp.json` -- a direct `{<name>:{command,args,env|url}}`
+  map, or the wrapped `{mcp_servers:{...}}` form (NOT a plugin-local config.toml). Skills at
+  `<plugin>/skills/<skill>/SKILL.md`.
+- Marketplace (v0.121): catalog at `.agents/plugins/marketplace.json` (repo) or
+  `~/.agents/plugins/marketplace.json` (personal). Shape: `{name, interface{displayName},
+  plugins:[{name, source, policy{installation,authentication}, category}]}`. `source` is a
+  discriminated object: `{source:"local", path:"./plugins/x"}` or `{source:"git-subdir", url,
+  path?, ref?}` (path resolves from repo root). `policy.installation`:
+  AVAILABLE|INSTALLED_BY_DEFAULT|NOT_AVAILABLE; `policy.authentication`: ON_INSTALL|ON_FIRST_USE;
+  `category` required. Register a repo: `codex plugin marketplace add owner/repo` (or in-session
+  `/plugin marketplace add owner/repo`). CONFIRMED against AnswerDotAI/codex-plugins + the official
+  `developers.openai.com/codex/plugins/build` docs.
 
 ## Cursor (`cursor-agent`) — confidence: high
 
