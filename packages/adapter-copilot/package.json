@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-adapter-copilot",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Weft adapter for GitHub Copilot CLI: plugin.json + mcp-config + component placement.",
   "type": "module",
   "main": "./dist/index.js",

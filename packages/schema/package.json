@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-schema",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Weft canonical data model: Zod schemas, types, and JSON-Schema export.",
   "type": "module",
   "main": "./dist/index.js",

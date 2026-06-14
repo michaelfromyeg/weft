@@ -158,9 +158,10 @@ const codexAdapter: HarnessAdapter = {
   harness: {
     name: "Codex CLI",
     versionCommand: "codex --version",
-    // Format confirmed against Codex CLI v0.121 (the marketplace release). Bump when
-    // re-verified against a newer line.
-    range: ">=0.121.0 <0.130.0",
+    // Format verified working from Codex CLI v0.121 (the marketplace release) through
+    // v0.139 (manual install test: marketplace add + plugin install). Bump the ceiling
+    // when re-verified against a newer line.
+    range: ">=0.121.0 <0.140.0",
   },
 
   detect(scope: Scope, cwd: string): InstallPaths {

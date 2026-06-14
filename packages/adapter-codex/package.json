@@ -1,6 +1,6 @@
 {
   "name": "@michaelfromyeg/weft-adapter-codex",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Weft adapter for OpenAI Codex: config.toml MCP servers + skill sidecars + component placement.",
   "type": "module",
   "main": "./dist/index.js",

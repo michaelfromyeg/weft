@@ -100,8 +100,9 @@ const copilotAdapter: HarnessAdapter = {
   harness: {
     name: "Copilot CLI",
     versionCommand: "copilot --version",
-    // Bump when the plugin/marketplace format is re-verified against a newer line.
-    range: ">=0.1.0 <1.0.0",
+    // Format verified against Copilot CLI v1.0.62 (manual install test: marketplace add
+    // + plugin install). Bump when re-verified against a newer line.
+    range: ">=1.0.0 <2.0.0",
   },
 
   detect(scope: Scope, cwd: string): InstallPaths {
